@@ -1,7 +1,7 @@
 {
   "name": "create-web3-sdk",
   "author": "Vasile Gabriel",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Quickly create a Web3 SDK with built in TypeScript, Biome, Vitest, viem, and more.",
   "keywords": [
     "web3",
