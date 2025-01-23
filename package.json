@@ -1,0 +1,39 @@
+{
+  "name": "create-web3-sdk",
+  "author": "Vasile Gabriel",
+  "version": "0.1.0",
+  "description": "Quickly create a Web3 SDK with built in TypeScript, Biome, Vitest, viem, and more.",
+  "keywords": [
+    "web3",
+    "sdk",
+    "typescript",
+    "ethereum",
+    "blockchain",
+    "viem",
+    "biome",
+    "vitest"
+  ],
+  "type": "module",
+  "main": "./dist/src/create.js",
+  "types": "./dist/src/create.d.ts",
+  "bin": {
+    "create-web3-sdk": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "create-web3-sdk": "node dist/index.js",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "commander": "^11.0.0",
+    "ora": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
