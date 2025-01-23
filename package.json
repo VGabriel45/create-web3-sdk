@@ -35,5 +35,11 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VGabriel45/create-web3-sdk.git"
+  },
+  "homepage": "https://github.com/VGabriel45/create-web3-sdk.git",
+  "license": "MIT"
 }
