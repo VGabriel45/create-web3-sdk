@@ -1,8 +1,8 @@
 # create-web3-sdk
 
-## 0.2.0
+## 1.0.0
 
-### Minor Changes
+### Major Changes
 
 - Added typechain support
 - Added changeset to chore package
