@@ -1,5 +1,15 @@
 # create-web3-sdk
 
+## 1.1.0
+
+### Minor Changes
+
+- bfc27ce: - added typechain
+  - added changeset to chore package
+  - added github repository url to npm page
+  - fixed issue with typedoc config
+- Removed typechain, now relying on viem contract instances + some changes on example code.
+
 ## 1.0.0
 
 ### Major Changes
@@ -13,4 +23,4 @@
 
 ### Minor Changes
 
-- Initial release with basic Web3 SDK creation support 
+- Initial release with basic Web3 SDK creation support

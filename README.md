@@ -11,7 +11,6 @@ A CLI tool to quickly scaffold a modern Web3 SDK with TypeScript, testing, docum
 - ✅ Dual ESM/CJS builds
 - ✅ Modern tooling with Bun
 - ✅ viem for Ethereum RPC 
-- ✅ Typescript bindings for smart contracts with Typechain
 
 ## Upcoming Features
 - ⚙️ Professional documentation website with vocs
