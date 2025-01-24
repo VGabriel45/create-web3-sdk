@@ -14,8 +14,7 @@ A CLI tool to quickly scaffold a modern Web3 SDK with TypeScript, testing, docum
 - ✅ Typescript bindings for smart contracts with Typechain
 
 ## Upcoming Features
-- ⚙️ Type safety for smart contracts with TypeChain
-- ⚙️ Professional pages documentation with vocs
+- ⚙️ Professional documentation website with vocs
 - ⚙️ Built in versioning and changelog with changesets
 - ⚙️ CI/CD setup with Github Actions
 - ⚙️ Web3 Testing enviorment with virtual networks, no need for testnet funds
