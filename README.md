@@ -4,25 +4,29 @@ A CLI tool to quickly scaffold a modern Web3 SDK with TypeScript, testing, docum
 
 ## Features
 
-- 🚀 TypeScript-first development
-- 📚 Automatic API documentation with TypeDoc
+- ✅ TypeScript-first development
+- ✅ Automatic API documentation with TypeDoc
 - ✅ Testing setup with Vitest
-- 🔍 Code quality with Biome (linting, formatting)
-- 📦 Dual ESM/CJS builds
-- 🌟 Modern tooling with Bun
-- 🔗 viem for Ethereum RPC 
-- ⚙️ Typescript bindings for smart contracts with typechain
+- ✅ Code quality with Biome (linting, formatting)
+- ✅ Dual ESM/CJS builds
+- ✅ Modern tooling with Bun
+- ✅ viem for Ethereum RPC 
+- ✅ Typescript bindings for smart contracts with Typechain
 
 ## Upcoming Features
-- 🔒 Type safety for smart contracts with TypeChain
-- 📖 Auto-generated documentation with vocs
+- ⚙️ Type safety for smart contracts with TypeChain
+- ⚙️ Professional pages documentation with vocs
+- ⚙️ Built in versioning and changelog with changesets
+- ⚙️ CI/CD setup with Github Actions
+- ⚙️ Web3 Testing enviorment with virtual networks, no need for testnet funds
 
 ## Usage
 
 Create a new SDK project:
 
 ```bash
-create-web3-sdk my-sdk
+npm install -g create-web3-sdk
+npx create-web3-sdk my-sdk 
 cd my-sdk
 bun install
 bun run test # Run tests
@@ -30,4 +34,4 @@ bun run build # Build the SDK
 bun run start # Start the SDK
 ```
 
-# create-web3-sdk
+Built with ❤️ 
