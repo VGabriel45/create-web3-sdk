@@ -6,10 +6,9 @@ import ora from 'ora';
 interface CreateOptions {
     typescript: boolean;
     git: boolean;
-    typechain?: boolean;
 }
 
-const packageJson = (projectName: string, options: CreateOptions) => ({
+const packageJson = (projectName: string) => ({
     name: projectName,
     version: '0.1.0',
     type: "module",
@@ -24,15 +23,10 @@ const packageJson = (projectName: string, options: CreateOptions) => ({
         }
     },
     scripts: {
-        build: options.typechain
-            ? "rimraf dist && bun run build:esm && bun run build:cjs && bun run build:types && bun run build:typechain"
-            : "rimraf dist && bun run build:esm && bun run build:cjs && bun run build:types",
+        build: "rimraf dist && bun run build:esm && bun run build:cjs && bun run build:types",
         "build:esm": "tsc -p tsconfig/esm.json",
         "build:cjs": "tsc -p tsconfig/cjs.json",
         "build:types": "tsc -p tsconfig/types.json",
-        ...(options.typechain && {
-            "build:typechain": "typechain --target=ethers-v6 --out-dir typechain/contracts './abis/**/*.json'"
-        }),
         "docs": "typedoc",
         "docs:watch": "typedoc --watch",
         "format": "biome format --write ./src",
@@ -42,21 +36,14 @@ const packageJson = (projectName: string, options: CreateOptions) => ({
         prepare: "bun run build"
     },
     dependencies: {
-        "viem": "^2.22.12",
-        ...(options.typechain && {
-            "ethers": "^6.0.0"
-        })
+        "viem": "^2.22.12"
     },
     devDependencies: {
         "@biomejs/biome": "1.5.3",
         "rimraf": "^5.0.0",
         "typedoc": "^0.25.0",
         "typescript": "^5.7.0",
-        "vitest": "^3.0.0",
-        ...(options.typechain && {
-            "@typechain/ethers-v6": "^0.5.0",
-            "typechain": "^8.3.0"
-        })
+        "vitest": "^3.0.0"
     },
     peerDependencies: {
         "typescript": "^5.0.0"
@@ -134,7 +121,7 @@ export async function create(projectName: string, options: CreateOptions) {
         }, null, 2));
 
         // Write package.json
-        const pkg = packageJson(projectName, options);
+        const pkg = packageJson(projectName);
         await writeFile('package.json', JSON.stringify(pkg, null, 2));
 
         // Add typedoc configuration
@@ -191,140 +178,101 @@ export async function create(projectName: string, options: CreateOptions) {
             }
         }, null, 2));
 
-        // Update sample SDK file with better documentation
-        await writeFile('src/index.ts', `
-import { createPublicClient, http } from 'viem'
-import { mainnet } from 'viem/chains'
-import type { Address } from 'viem'
+        // Create .env.example file
+        await writeFile('.env.example', `
+# Required for testing token transfers
+TESTING_PRIVATE_KEY=your_private_key_here
+
+# Optional: Override default RPC URL
+RPC_URL=your_rpc_url_here
+`);
+
+        // Create example SDK file
+        const sdkContent = `
+import { createPublicClient, http, type Address } from 'viem'
+import { baseSepolia } from 'viem/chains'
+import { getContract } from 'viem'
+import { erc20Abi } from 'viem'
 
 /**
  * Configuration options for the SDK
- * @property rpcUrl - The RPC URL for the Ethereum node
- * @property chain - The chain configuration (defaults to mainnet)
+ * @property rpcUrl - The RPC URL (defaults to Base Sepolia)
+ * @property chain - The chain configuration
  */
 export interface SDKConfig {
-  rpcUrl: string
-  chain?: typeof mainnet
+  rpcUrl?: string
+  chain?: typeof baseSepolia
 }
 
 /**
  * Creates a new SDK instance
- * @param config - The SDK configuration
- * @returns An object containing SDK methods
- * 
- * @example
- * \`\`\`ts
- * const sdk = main({
- *   rpcUrl: 'https://eth-mainnet.g.alchemy.com/v2/your-api-key'
- * })
- * 
- * const blockNumber = await sdk.getBlockNumber()
- * \`\`\`
  */
-export function main(config: SDKConfig) {
-  const client = createPublicClient({
-    chain: config.chain ?? mainnet,
-    transport: http(config.rpcUrl)
+export function main(config: SDKConfig = {}) {
+  const publicClient = createPublicClient({
+    chain: config.chain ?? baseSepolia,
+    transport: http(config.rpcUrl ?? baseSepolia.rpcUrls.default.http[0])
   })
 
   return {
-    /**
-     * Gets the current block number
-     * @returns The current block number
-     */
     getBlockNumber: async () => {
-      return client.getBlockNumber()
+      return publicClient.getBlockNumber()
     },
 
-    /**
-     * Gets the balance of an address
-     * @param address - The Ethereum address to get the balance for
-     * @returns The balance in wei
-     */
     getBalance: async (address: Address) => {
-      return client.getBalance({ address })
+      return publicClient.getBalance({ address })
     },
 
-    // Add more functions as needed...
-  }
-}
-`);
+    getTokenBalance: async (tokenAddress: Address, address: Address) => {
+      const contract = getContract({
+        address: tokenAddress,
+        abi: erc20Abi,
+        client: publicClient
+      })
 
-        // Create sample test file
+      return contract.read.balanceOf([address])
+    }
+  }
+}`;
+
+        await writeFile('src/index.ts', sdkContent);
+
+        // Create test file
         await writeFile('test/sdk.test.ts', `
 import { describe, it, expect } from 'vitest'
 import { main } from '../src'
-import { mainnet } from 'viem/chains'
+import { baseSepolia } from 'viem/chains'
+
+// Mock USDC token on Base Sepolia
+const TEST_TOKEN = '0x5dEaC602762362FE5f135FA5904351916053cF70' as const
 
 describe('SDK', () => {
   const sdk = main({
-    rpcUrl: 'https://eth-mainnet.g.alchemy.com/v2/your-api-key',
-    chain: mainnet
+    chain: baseSepolia,
+    privateKey: process.env.TESTING_PRIVATE_KEY as \`0x\${string}\`
   })
 
-  it('should be defined', () => {
-    expect(sdk).toBeDefined()
-    expect(sdk.getBlockNumber).toBeDefined()
-    expect(sdk.getBalance).toBeDefined()
+  it('should get block number', async () => {
+    const blockNumber = await sdk.getBlockNumber()
+    expect(blockNumber).toBeTypeOf('bigint')
+  })
+
+  it('should get address balance', async () => {
+    const balance = await sdk.getBalance('0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045')
+    expect(balance).toBeTypeOf('bigint')
+  })
+
+  it('should get token balance', async () => {
+    const balance = await sdk.getTokenBalance(
+      TEST_TOKEN,
+      '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'
+    )
+    console.log(balance)
+    expect(balance).toBeTypeOf('bigint')
   })
 })
 `);
 
-        // Create TypeChain directories and files if enabled
-        if (options.typechain) {
-            await mkdir('typechain');
-            await mkdir('typechain/contracts');
-            await mkdir('abis');
-
-            // Add sample ABI
-            await writeFile('abis/ERC20.json', JSON.stringify({
-                "name": "ERC20",
-                "abi": [
-                    {
-                        "inputs": [
-                            {
-                                "internalType": "string",
-                                "name": "name_",
-                                "type": "string"
-                            },
-                            {
-                                "internalType": "string",
-                                "name": "symbol_",
-                                "type": "string"
-                            }
-                        ],
-                        "stateMutability": "nonpayable",
-                        "type": "constructor"
-                    },
-                    {
-                        "inputs": [
-                            {
-                                "internalType": "address",
-                                "name": "owner",
-                                "type": "address"
-                            },
-                            {
-                                "internalType": "address",
-                                "name": "spender",
-                                "type": "address"
-                            }
-                        ],
-                        "name": "allowance",
-                        "outputs": [
-                            {
-                                "internalType": "uint256",
-                                "name": "",
-                                "type": "uint256"
-                            }
-                        ],
-                        "stateMutability": "view",
-                        "type": "function"
-                    }
-                ]
-            }, null, 2));
-        }
-
-        // Update README with TypeChain instructions if enabled
+        // Update README
         await writeFile('README.md', `
 # ${projectName}
 
@@ -342,16 +290,10 @@ npx create-web3-sdk my-sdk
 
 ## Development
 
-${options.typechain ? `### Smart Contract Types
+## Scripts
 
-1. Add your contract ABIs to the \`abis\` directory
-2. Run \`bun run build:typechain\` to generate TypeScript types
-3. Import and use the generated types in your SDK
-
-` : ''}## Scripts
-
-- \`bun run build\` - Build the SDK${options.typechain ? ' (includes contract types)' : ''}
-${options.typechain ? '- \`bun run build:typechain\` - Generate TypeScript types from ABIs\n' : ''}- \`bun run test\` - Run tests
+- \`bun run build\` - Build the SDK
+- \`bun run test\` - Run tests
 - \`bun run check\` - Format and lint code
 `);
 
@@ -362,7 +304,6 @@ node_modules
 dist
 docs
 .env
-${options.typechain ? 'typechain/contracts' : ''}
 `);
         }
 

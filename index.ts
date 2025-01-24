@@ -16,7 +16,6 @@ program
     .argument('<project-name>', 'Name of the SDK project')
     .option('--typescript', 'Use TypeScript (default: true)', true)
     .option('--git', 'Initialize git repository (default: true)', true)
-    .option('--typechain', 'Add TypeChain support for smart contract types (default: false)', false)
     .action(async (projectName: string, options) => {
         try {
             await create(projectName, options);
