@@ -11,10 +11,10 @@ A CLI tool to quickly scaffold a modern Web3 SDK with TypeScript, testing, docum
 - ✅ Dual ESM/CJS builds
 - ✅ Modern tooling with Bun
 - ✅ viem for Ethereum RPC 
+- ✅ Built in versioning and changelog with changesets
 
 ## Upcoming Features
 - ⚙️ Professional documentation website with vocs
-- ⚙️ Built in versioning and changelog with changesets
 - ⚙️ CI/CD setup with Github Actions
 - ⚙️ Web3 Testing enviorment with virtual networks, no need for testnet funds
 
