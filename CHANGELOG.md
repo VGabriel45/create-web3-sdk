@@ -1,5 +1,11 @@
 # create-web3-sdk
 
+## 1.2.0
+
+### Minor Changes
+
+- Added changeset
+
 ## 1.1.0
 
 ### Minor Changes
