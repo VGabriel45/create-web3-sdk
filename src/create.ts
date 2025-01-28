@@ -33,13 +33,17 @@ const packageJson = (projectName: string) => ({
         "lint": "biome lint ./src",
         "check": "biome check ./src",
         test: "vitest",
-        prepare: "bun run build"
+        prepare: "bun run build",
+        "changeset": "changeset",
+        "version": "changeset version",
+        "release": "npm run build && changeset publish --access public"
     },
     dependencies: {
         "viem": "^2.22.12"
     },
     devDependencies: {
         "@biomejs/biome": "1.5.3",
+        "@changesets/cli": "^2.27.11",
         "rimraf": "^5.0.0",
         "typedoc": "^0.25.0",
         "typescript": "^5.7.0",
@@ -272,7 +276,21 @@ describe('SDK', () => {
 })
 `);
 
-        // Update README
+        // Add changesets configuration
+        await mkdir('.changeset');
+        await writeFile('.changeset/config.json', JSON.stringify({
+            "$schema": "https://unpkg.com/@changesets/config@2.3.1/schema.json",
+            "changelog": "@changesets/cli/changelog",
+            "commit": false,
+            "fixed": [],
+            "linked": [],
+            "access": "public",
+            "baseBranch": "main",
+            "updateInternalDependencies": "patch",
+            "ignore": []
+        }, null, 2));
+
+        // Update README with versioning instructions
         await writeFile('README.md', `
 # ${projectName}
 
@@ -290,11 +308,23 @@ npx create-web3-sdk my-sdk
 
 ## Development
 
-## Scripts
+### Scripts
 
 - \`bun run build\` - Build the SDK
 - \`bun run test\` - Run tests
 - \`bun run check\` - Format and lint code
+
+### Versioning and Changelog
+
+This project uses [changesets](https://github.com/changesets/changesets) for versioning and changelog generation.
+
+1. Make your changes
+2. Run \`bun changeset\` to create a new changeset
+3. Follow the prompts to describe your changes
+4. Commit the generated changeset file
+5. When ready to release:
+   - Run \`bun run version\` to update versions and changelog
+   - Run \`bun run release\` to publish to npm
 `);
 
         // Update .gitignore
