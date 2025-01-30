@@ -17,9 +17,9 @@ const packageJson = (projectName: string) => ({
     types: "./dist/types/index.d.ts",
     exports: {
         ".": {
+            types: "./dist/types/index.d.ts",
             import: "./dist/esm/index.js",
-            require: "./dist/cjs/index.js",
-            types: "./dist/types/index.d.ts"
+            require: "./dist/cjs/index.js"
         }
     },
     scripts: {
@@ -32,7 +32,8 @@ const packageJson = (projectName: string) => ({
         "format": "biome format --write ./src",
         "lint": "biome lint ./src",
         "check": "biome check ./src",
-        test: "vitest",
+        "fork:base-sepolia": "anvil --fork-url https://sepolia.base.org -vvvv",
+        "test": "concurrently \"bun run fork:base-sepolia\" \"wait-on tcp:8545 && vitest\" \"kill -9 $(lsof -t -i:8545)\"",
         prepare: "bun run build",
         "changeset": "changeset",
         "version": "changeset version",
@@ -47,7 +48,10 @@ const packageJson = (projectName: string) => ({
         "rimraf": "^5.0.0",
         "typedoc": "^0.25.0",
         "typescript": "^5.7.0",
-        "vitest": "^3.0.0"
+        "vitest": "^3.0.0",
+        "concurrently": "^8.2.2",
+        "wait-on": "^7.2.0",
+        "@viem/anvil": "^0.0.10"
     },
     peerDependencies: {
         "typescript": "^5.0.0"
@@ -193,88 +197,148 @@ RPC_URL=your_rpc_url_here
 
         // Create example SDK file
         const sdkContent = `
-import { createPublicClient, http, type Address } from 'viem'
-import { baseSepolia } from 'viem/chains'
-import { getContract } from 'viem'
-import { erc20Abi } from 'viem'
-
-/**
- * Configuration options for the SDK
- * @property rpcUrl - The RPC URL (defaults to Base Sepolia)
- * @property chain - The chain configuration
- */
-export interface SDKConfig {
-  rpcUrl?: string
-  chain?: typeof baseSepolia
-}
-
-/**
- * Creates a new SDK instance
- */
-export function main(config: SDKConfig = {}) {
-  const publicClient = createPublicClient({
-    chain: config.chain ?? baseSepolia,
-    transport: http(config.rpcUrl ?? baseSepolia.rpcUrls.default.http[0])
-  })
-
-  return {
-    getBlockNumber: async () => {
-      return publicClient.getBlockNumber()
-    },
-
-    getBalance: async (address: Address) => {
-      return publicClient.getBalance({ address })
-    },
-
-    getTokenBalance: async (tokenAddress: Address, address: Address) => {
-      const contract = getContract({
-        address: tokenAddress,
-        abi: erc20Abi,
-        client: publicClient
-      })
-
-      return contract.read.balanceOf([address])
-    }
-  }
-}`;
+// Implement SDK
+`;
 
         await writeFile('src/index.ts', sdkContent);
 
-        // Create test file
-        await writeFile('test/sdk.test.ts', `
-import { describe, it, expect } from 'vitest'
-import { main } from '../src'
-import { baseSepolia } from 'viem/chains'
+        // Create test config file
+        const testConfigContent = `
+import { createTestClient, defineChain, http, publicActions, walletActions } from 'viem'
 
-// Mock USDC token on Base Sepolia
-const TEST_TOKEN = '0x5dEaC602762362FE5f135FA5904351916053cF70' as const
+export const ANVIL_RPC_URL = 'http://127.0.0.1:8545'
 
-describe('SDK', () => {
-  const sdk = main({
-    chain: baseSepolia,
-    privateKey: process.env.TESTING_PRIVATE_KEY as \`0x\${string}\`
-  })
-
-  it('should get block number', async () => {
-    const blockNumber = await sdk.getBlockNumber()
-    expect(blockNumber).toBeTypeOf('bigint')
-  })
-
-  it('should get address balance', async () => {
-    const balance = await sdk.getBalance('0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045')
-    expect(balance).toBeTypeOf('bigint')
-  })
-
-  it('should get token balance', async () => {
-    const balance = await sdk.getTokenBalance(
-      TEST_TOKEN,
-      '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'
-    )
-    console.log(balance)
-    expect(balance).toBeTypeOf('bigint')
-  })
+export const testChain = defineChain({
+  id: 84532,
+  name: 'Base Sepolia Fork',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Ether',
+    symbol: 'ETH',
+  },
+  rpcUrls: {
+    default: {
+      http: [ANVIL_RPC_URL],
+    },
+  },
+  blockExplorers: {
+    default: { name: 'Explorer', url: 'https://sepolia.basescan.org' },
+  },
 })
-`);
+
+export const testClient = createTestClient({
+  chain: testChain,
+  mode: 'anvil',
+  transport: http(ANVIL_RPC_URL),
+})
+  .extend(walletActions)
+  .extend(publicActions)
+
+// Anvil's first test account - has 10000 ETH
+export const TEST_ACCOUNT = {
+  address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+  privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
+} as const
+`;
+
+        // Create test utilities file
+        const testUtilsContent = `
+import { createWalletClient, http, parseEther, type Address } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
+import { testChain, TEST_ACCOUNT, testClient } from './test.config'
+
+export async function fundAddress(address: Address, amount: string) {
+  const account = privateKeyToAccount(TEST_ACCOUNT.privateKey)
+  const client = createWalletClient({
+    account,
+    chain: testChain,
+    transport: http()
+  })
+
+  const tx = await client.sendTransaction({
+    to: address,
+    value: parseEther(amount)
+  })
+
+  return tx
+}
+
+export async function getBalance(address: Address) {
+  return testClient.getBalance({ address })
+}
+
+export async function impersonateAccount(address: Address) {
+  await testClient.impersonateAccount({ address })
+}
+`;
+
+        // Update the test file content
+        const testFileContent = `
+import { describe, it, expect } from 'vitest'
+import { http, parseEther, createPublicClient } from 'viem'
+import { testChain, ANVIL_RPC_URL, testClient } from './config/test.config'
+import { fundAddress, getBalance, impersonateAccount } from './config/test.utils'
+
+// Vitalik's address for impersonation test
+const VITALIK = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045' as const
+
+describe('SDK Example Tests', () => {
+  it('should fund an address using utility function', async () => {
+    const recipient = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
+
+    // Fund the recipient using our utility function
+    const fundTx = await fundAddress(recipient, '1.5')
+
+    // Verify the transfer
+    const publicClient = createPublicClient({
+      transport: http(ANVIL_RPC_URL),
+      chain: testChain
+    })
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: fundTx })
+    expect(receipt.status).toBe('success')
+
+    const balance = await getBalance(recipient)
+    expect(balance >= parseEther('1.5')).toBe(true)
+  })
+
+  it('should impersonate Vitalik and send ETH', async () => {
+    const recipient = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
+
+    // Get initial balances
+    const initialBalance = await getBalance(recipient)
+
+    const vitalikBalance = await getBalance(VITALIK)
+    console.log('Vitalik balance:', vitalikBalance)
+
+    // Impersonate Vitalik
+    await impersonateAccount(VITALIK)
+
+    // Send 1 ETH from Vitalik's account to the recipient
+    const txHash = await testClient.sendUnsignedTransaction({
+      from: VITALIK,
+      to: recipient,
+      value: parseEther('1')
+    })
+
+    // Wait for transaction
+    const receipt = await testClient.waitForTransactionReceipt({ hash: txHash })
+    expect(receipt.status).toBe('success')
+
+    // Verify the transfer
+    const finalBalance = await getBalance(recipient)
+    expect(finalBalance - initialBalance).toBe(parseEther('1'))
+
+    // Stop impersonating
+    await testClient.stopImpersonatingAccount({ address: VITALIK })
+  })
+})`;
+
+        // In the create function, add these files:
+        await mkdir('test/config');
+        await writeFile('test/config/test.config.ts', testConfigContent);
+        await writeFile('test/config/test.utils.ts', testUtilsContent);
+        await writeFile('test/sdk.test.ts', testFileContent);
 
         // Add changesets configuration
         await mkdir('.changeset');
@@ -291,7 +355,7 @@ describe('SDK', () => {
         }, null, 2));
 
         // Update README with versioning instructions
-        await writeFile('README.md', `
+        const readmeContent = `
 # ${projectName}
 
 ## Installation
@@ -311,8 +375,20 @@ npx create-web3-sdk my-sdk
 ### Scripts
 
 - \`bun run build\` - Build the SDK
-- \`bun run test\` - Run tests
+- \`bun run test\` - Run tests against Base Sepolia
+- \`bun run test:fork\` - Run tests against local Anvil fork
+- \`bun run fork:base-sepolia\` - Start Anvil fork of Base Sepolia
 - \`bun run check\` - Format and lint code
+
+### Testing with Local Fork
+
+For faster and more reliable tests, you can run them against a local Anvil fork:
+
+1. Install Anvil (comes with Foundry): https://book.getfoundry.sh/
+2. Run \`bun run test:fork\` - This will:
+   - Start an Anvil fork of Base Sepolia
+   - Wait for the fork to be ready
+   - Run the tests against the local fork
 
 ### Versioning and Changelog
 
@@ -325,7 +401,9 @@ This project uses [changesets](https://github.com/changesets/changesets) for ver
 5. When ready to release:
    - Run \`bun run version\` to update versions and changelog
    - Run \`bun run release\` to publish to npm
-`);
+`;
+
+        await writeFile('README.md', readmeContent);
 
         // Update .gitignore
         if (options.git) {
