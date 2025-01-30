@@ -1,5 +1,11 @@
 # create-web3-sdk
 
+## 1.3.0
+
+### Minor Changes
+
+- Implemented built-in network fork for quick and easy testing of on-chain actions.
+
 ## 1.2.1
 
 ### Patch Changes
