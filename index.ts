@@ -14,7 +14,6 @@ program
     .description('CLI tool to scaffold Web3 SDK projects')
     .version(pkg.version)
     .argument('<project-name>', 'Name of the SDK project')
-    .option('--v', 'Show version of package')
     .option('--typescript', 'Use TypeScript (default: true)', true)
     .option('--git', 'Initialize git repository (default: true)', true)
     .action(async (projectName: string, options) => {
